@@ -3,7 +3,6 @@
 #include <QPixmap>
 #include <QImage>
 #include <QTimer>
-#include <QCheckBox>
 
 class ClockWidget : public QWidget {
     Q_OBJECT
@@ -27,6 +26,5 @@ private:
     QPixmap dialBackground;    // Кэшированное изображение круглого циферблата с фоном
     QImage handImg;            // Изображение стрелки
     QTimer *timer;             // Таймер для обновления времени
-    QCheckBox *cbAntialias;    // Чекбокс для включения сглаживания
     bool backgroundLoaded;     // Флаг загрузки фона
 };

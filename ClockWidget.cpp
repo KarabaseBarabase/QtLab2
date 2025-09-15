@@ -8,7 +8,9 @@
 #include <QCheckBox>
 #include <QTimer>
 #include <QPainterPath>
-#include <QDebug> // Для отладки
+#include <QDebug>
+#include <QDateTime>
+#include <QTimeZone>
 
 ClockWidget::ClockWidget(QWidget *parent) : QWidget(parent), backgroundLoaded(false) {
     auto *layout = new QVBoxLayout(this);
@@ -21,11 +23,9 @@ ClockWidget::ClockWidget(QWidget *parent) : QWidget(parent), backgroundLoaded(fa
     // Создаем кнопки
     QPushButton *btnLoadBg = new QPushButton("Загрузить фон", controls);
     QPushButton *btnLoadHand = new QPushButton("Загрузить стрелку", controls);
-    cbAntialias = new QCheckBox("Сглаживание", controls);
 
     hl->addWidget(btnLoadBg);
     hl->addWidget(btnLoadHand);
-    hl->addWidget(cbAntialias);
     hl->addStretch();
 
     controls->setLayout(hl);
@@ -108,6 +108,9 @@ void ClockWidget::updateBackgroundCache() {
     p.translate(dialSize/2, dialSize/2);
     p.scale(dialSize/200.0, dialSize/200.0);
 
+    // Поворачиваем систему координат, чтобы 12 было вверху
+    p.rotate(-90);
+
     QFont f = p.font();
     f.setPointSize(10);
     p.setFont(f);
@@ -125,7 +128,8 @@ void ClockWidget::updateBackgroundCache() {
             // Цифры перпендикулярно радиусу
             p.save();
             p.translate(70, 0);
-            p.rotate(-90);
+
+            // Убираем поворот текста, так как мы уже повернули систему координат
             int num = (i/5 == 0) ? 12 : i/5;
             p.drawText(QRect(-10, -10, 20, 20), Qt::AlignCenter, QString::number(num));
             p.restore();
@@ -140,10 +144,6 @@ void ClockWidget::updateBackgroundCache() {
 
 void ClockWidget::paintEvent(QPaintEvent *) {
     QPainter p(this);
-    if (cbAntialias->isChecked()) {
-        p.setRenderHint(QPainter::Antialiasing);
-        p.setRenderHint(QPainter::SmoothPixmapTransform);
-    }
 
     // Фон всего виджета
     p.fillRect(rect(), QColor(240, 240, 240));
@@ -162,6 +162,8 @@ void ClockWidget::paintEvent(QPaintEvent *) {
         p.save();
         p.translate(x + dialSize/2, y + dialSize/2);
         p.scale(dialSize/200.0, dialSize/200.0);
+        // Поворачиваем систему координат, чтобы 12 было вверху
+        p.rotate(-90);
         drawDial(&p);
         p.restore();
     }
@@ -170,6 +172,8 @@ void ClockWidget::paintEvent(QPaintEvent *) {
     p.save();
     p.translate(x + dialSize/2, y + dialSize/2);
     p.scale(dialSize/200.0, dialSize/200.0);
+    // Поворачиваем систему координат, чтобы 12 было вверху
+    p.rotate(-90);
     drawHands(&p);
     p.restore();
 }
@@ -202,7 +206,8 @@ void ClockWidget::drawDial(QPainter *p) {
             // Цифры перпендикулярно радиусу
             p->save();
             p->translate(70, 0);
-            p->rotate(-90);
+
+            // Убираем поворот текста, так как мы уже повернули систему координат
             int num = (i/5 == 0) ? 12 : i/5;
             p->drawText(QRect(-10, -10, 20, 20), Qt::AlignCenter, QString::number(num));
             p->restore();
@@ -216,23 +221,34 @@ void ClockWidget::drawDial(QPainter *p) {
 }
 
 void ClockWidget::drawHands(QPainter *p) {
-    QTime t = QTime::currentTime();
+    QDateTime utcNow = QDateTime::currentDateTimeUtc();
+    QDateTime samaraTime = utcNow.addSecs(4 * 3600); // Добавляем 4 часа для UTC+4
+    QTime t = samaraTime.time();
+
+    // Базовый размер для всех стрелок
+    const int baseHandLength = 70;
 
     // Функция для рисования одной стрелки
-    auto drawOneHand = [&](double angle, int len, int width, const QColor &fallbackColor) {
+    auto drawOneHand = [&](double angle, int width, const QColor &fallbackColor, double lengthFactor = 1.0) {
         p->save();
         p->rotate(angle);
 
+        // Фактическая длина стрелки с учетом коэффициента
+        int actualLength = baseHandLength * lengthFactor;
+
         if (!handImg.isNull()) {
             // Используем изображение стрелки с масштабированием
-            // Масштабируем по высоте, сохраняя пропорции
-            QImage scaledHand = handImg.scaledToHeight(len, Qt::SmoothTransformation);
-            // Центрируем изображение
-            p->drawImage(-scaledHand.width()/2, -scaledHand.height(), scaledHand);
+            // Масштабируем с учетом коэффициента длины
+            int scaledHeight = actualLength;
+            QImage scaledHand = handImg.scaledToHeight(scaledHeight, Qt::SmoothTransformation);
+
+            // Центрируем изображение и позиционируем так, чтобы основание было в центре
+            // Смещаем вниз на половину высоты, чтобы центр вращения был внизу изображения
+            p->drawImage(-scaledHand.width()/2, -scaledHand.height()/2, scaledHand);
         } else {
             // Рисуем простую линию (резервный вариант)
             p->setPen(QPen(fallbackColor, width, Qt::SolidLine, Qt::RoundCap));
-            p->drawLine(0, 0, 0, -len);
+            p->drawLine(0, 0, 0, -actualLength);
 
             // Круг в центре стрелок
             p->setBrush(fallbackColor);
@@ -243,16 +259,21 @@ void ClockWidget::drawHands(QPainter *p) {
         p->restore();
     };
 
+    // Коэффициенты длины для разных стрелок (относительно базового размера)
+    double hourLengthFactor = 0.7;    // Часовая стрелка - 70% от базового размера
+    double minuteLengthFactor = 0.9;  // Минутная стрелка - 90% от базового размера
+    double secondLengthFactor = 1.0;  // Секундная стрелка - 100% от базового размера
+
     // Рисуем стрелки
     // Часовая стрелка
     double hourAngle = 30.0 * (t.hour() % 12) + t.minute() / 2.0;
-    drawOneHand(hourAngle, 50, 6, Qt::black);
+    drawOneHand(hourAngle, 6, Qt::black, hourLengthFactor);
 
     // Минутная стрелка
-    drawOneHand(6.0 * t.minute(), 70, 4, Qt::black);
+    drawOneHand(6.0 * t.minute(), 4, Qt::black, minuteLengthFactor);
 
     // Секундная стрелка
-    drawOneHand(6.0 * t.second(), 80, 2, Qt::red);
+    drawOneHand(6.0 * t.second(), 2, Qt::red, secondLengthFactor);
 
     // Центральный кружок
     p->setBrush(Qt::red);
