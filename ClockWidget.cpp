@@ -1,49 +1,51 @@
-#include "clockwidget.h"
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QFileDialog>
-#include <QPainter>
-#include <QTime>
-#include <QCheckBox>
-#include <QTimer>
-#include <QPainterPath>
-#include <QDebug>
-#include <QDateTime>
-#include <QTimeZone>
+#include "clockwidget.h"          // Собственный заголовочный файл виджета
+#include <QVBoxLayout>            // Вертикальное размещение элементов
+#include <QHBoxLayout>            // Горизонтальное размещение элементов
+#include <QPushButton>            // Кнопки управления
+#include <QFileDialog>            // Диалог выбора файлов
+#include <QPainter>               // Рисование графики
+#include <QTime>                  // Работа со временем
+#include <QCheckBox>              // Флажки (был удален)
+#include <QTimer>                 // Таймер для обновления
+#include <QPainterPath>           // Пути для рисования (круги, маски)
+#include <QDebug>                 // Отладочный вывод
+#include <QDateTime>              // Дата и время с часовыми поясами
+#include <QTimeZone>              // Работа с часовыми поясами
 
 ClockWidget::ClockWidget(QWidget *parent) : QWidget(parent), backgroundLoaded(false) {
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(10, 10, 10, 10);
+    // Наследуем от QWidget, инициализируем флаг фона как false
+    auto *layout = new QVBoxLayout(this);         // Создаем вертикальный layout
+    layout->setContentsMargins(10, 10, 10, 10);   // Устанавливаем отступы 10px со всех сторон
 
-    auto *controls = new QWidget(this);
-    auto *hl = new QHBoxLayout(controls);
-    controls->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    auto *controls = new QWidget(this);           // Создаем виджет для кнопок управления
+    auto *hl = new QHBoxLayout(controls);         // Горизонтальный layout для кнопок
+    controls->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum); // Фиксированная высота
 
     // Создаем кнопки
     QPushButton *btnLoadBg = new QPushButton("Загрузить фон", controls);
     QPushButton *btnLoadHand = new QPushButton("Загрузить стрелку", controls);
 
-    hl->addWidget(btnLoadBg);
+    hl->addWidget(btnLoadBg);        // Добавляем кнопки в горизонтальный layout
     hl->addWidget(btnLoadHand);
-    hl->addStretch();
+    hl->addStretch();                // Добавляем растягивающийся элемент (выравнивание влево)
 
-    controls->setLayout(hl);
-    layout->addWidget(controls);
+    controls->setLayout(hl);         // Устанавливаем layout для виджета управления
+    layout->addWidget(controls);     // Добавляем виджет управления в основной layout
 
-    // Подключаем сигналы
+    // Подключаем сигналы кнопок к слотам
     connect(btnLoadBg, &QPushButton::clicked, this, &ClockWidget::loadBackground);
     connect(btnLoadHand, &QPushButton::clicked, this, &ClockWidget::loadHandImage);
 
     // Таймер для обновления времени
     timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, qOverload<>(&ClockWidget::update));
-    timer->start(1000);
+    connect(timer, &QTimer::timeout, this, qOverload<>(&ClockWidget::update));  // При timeout вызываем update()
+    timer->start(1000);                                                         // Запускаем таймер с интервалом 1000 мс (1 сек)
 }
 
 void ClockWidget::loadBackground() {
     QString f = QFileDialog::getOpenFileName(this, "Фон циферблата", {},
                                              "Images (*.png *.jpg *.bmp *.gif *.tiff)");
+    // Открываем диалог выбора файла с фильтром изображений
     if (!f.isEmpty()) {
         originalBg = QPixmap(f);
         backgroundLoaded = true;
@@ -89,15 +91,15 @@ void ClockWidget::updateBackgroundCache() {
 
     // Масштабируем фон под размер циферблата
     QPixmap scaledBg = originalBg.scaled(dialSize, dialSize,
-                                         Qt::KeepAspectRatioByExpanding,
-                                         Qt::SmoothTransformation);
+                                         Qt::KeepAspectRatioByExpanding, // Сохраняем пропорции
+                                         Qt::SmoothTransformation);      // Сглаженное масштабирование
 
     // Вырезаем центральную часть
     int x = (scaledBg.width() - dialSize) / 2;
     int y = (scaledBg.height() - dialSize) / 2;
     p.drawPixmap(0, 0, scaledBg, x, y, dialSize, dialSize);
 
-    p.setClipping(false);
+    p.setClipping(false);   // Отключаем маску обрезки
 
     // Рисуем обводку циферблата
     p.setPen(QPen(Qt::black, 2));
@@ -117,25 +119,23 @@ void ClockWidget::updateBackgroundCache() {
     p.setPen(Qt::black);
 
     // Деления и цифры (перпендикулярно радиусу)
-    for (int i = 0; i < 60; i++) {
-        p.save();
-        p.rotate(i * 6);
+    for (int i = 0; i < 60; i++) {              // 60 делений (каждая минута)
+        p.save();                               // Сохраняем состояние painter
+        p.rotate(i * 6);                        // Поворачиваем на 6° за каждую минуту
 
-        if (i % 5 == 0) {
-            // Большие деления для часов
-            p.drawLine(80, 0, 95, 0);
+        if (i % 5 == 0) {                       // Каждые 5 минут (часовые деления)
+            p.drawLine(80, 0, 95, 0);          // Рисуем длинное деление
 
             // Цифры перпендикулярно радиусу
             p.save();
-            p.translate(70, 0);
+            p.translate(70, 0);                 // Перемещаем к позиции цифры
 
             // Убираем поворот текста, так как мы уже повернули систему координат
-            int num = (i/5 == 0) ? 12 : i/5;
+            int num = (i/5 == 0) ? 12 : i/5;   // 0 -> 12, остальные как есть
             p.drawText(QRect(-10, -10, 20, 20), Qt::AlignCenter, QString::number(num));
             p.restore();
         } else {
-            // Малые деления для минут
-            p.drawLine(90, 0, 95, 0);
+            p.drawLine(90, 0, 95, 0);          // Короткое деление для минут
         }
 
         p.restore();

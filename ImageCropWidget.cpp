@@ -32,7 +32,7 @@ void ImageCropWidget::loadImage() {
     if (!f.isEmpty()) {
         base = QPixmap(f);
         imageLabel->setPixmap(base);
-        imageLabel->adjustSize();               // Важно!
+        imageLabel->adjustSize();
         imageLabel->setScaledContents(true);    // Масштабирование
         btnSave->setEnabled(false);
     }

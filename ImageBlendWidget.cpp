@@ -21,18 +21,19 @@ ImageBlendWidget::ImageBlendWidget(QWidget *parent) : QWidget(parent) {
 
     scaleCheck = new QCheckBox("Масштабировать наложение под фон", controls);
 
+    // Добавляет все элементы управления в горизонтальный layout
     hl->addWidget(btnLoadBase);
     hl->addWidget(btnLoadTop);
     hl->addWidget(comboMode);
     hl->addWidget(scaleCheck);
-    hl->addStretch();
-    controls->setLayout(hl);
-    layout->addWidget(controls);
+    hl->addStretch();   // Добавляет растягивающийся элемент
+    controls->setLayout(hl);                    // Устанавливает layout для виджета управления
+    layout->addWidget(controls);                // Добавляет виджет управления в основной layout
 
     imageLabel = new QLabel;
-    scrollArea = new QScrollArea;
-    scrollArea->setWidget(imageLabel);
-    scrollArea->setWidgetResizable(true);
+    scrollArea = new QScrollArea;               // Создает область прокрутки
+    scrollArea->setWidget(imageLabel);          // Устанавливает QLabel как виджет в области прокрутки
+    scrollArea->setWidgetResizable(true);       // Разрешает изменение размера виджета
     layout->addWidget(scrollArea);
 
     connect(btnLoadBase, &QPushButton::clicked, this, &ImageBlendWidget::loadBaseImage);
@@ -43,9 +44,10 @@ ImageBlendWidget::ImageBlendWidget(QWidget *parent) : QWidget(parent) {
 
 void ImageBlendWidget::loadBaseImage() {
     QString f = QFileDialog::getOpenFileName(this, "Открыть фон", {}, "Images (*.png *.jpg *.bmp *.gif *.tiff)");
+    // Открывает диалог выбора файла для фонового изображения
     if (!f.isEmpty()) {
         base = QImage(f);
-        rebuildComposite();
+        rebuildComposite(); // Перестраивает композитное изображение
     }
 }
 
