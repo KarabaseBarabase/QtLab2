@@ -1,0 +1,11 @@
+debug/main.o
+debug/MainWindow.o
+debug/ImageBlendWidget.o
+debug/ClockWidget.o
+debug/ImageCropWidget.o
+debug/ImageScaleCopyWidget.o
+debug/moc_MainWindow.o
+debug/moc_ImageBlendWidget.o
+debug/moc_ClockWidget.o
+debug/moc_ImageCropWidget.o
+debug/moc_ImageScaleCopyWidget.o

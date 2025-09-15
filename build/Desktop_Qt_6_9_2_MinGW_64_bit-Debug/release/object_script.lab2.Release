@@ -1,0 +1,11 @@
+release/main.o
+release/MainWindow.o
+release/ImageBlendWidget.o
+release/ClockWidget.o
+release/ImageCropWidget.o
+release/ImageScaleCopyWidget.o
+release/moc_MainWindow.o
+release/moc_ImageBlendWidget.o
+release/moc_ClockWidget.o
+release/moc_ImageCropWidget.o
+release/moc_ImageScaleCopyWidget.o
